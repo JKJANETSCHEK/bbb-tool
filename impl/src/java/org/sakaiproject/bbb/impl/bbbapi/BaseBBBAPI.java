@@ -275,10 +275,46 @@ public class BaseBBBAPI implements BBBAPI {
             Map<String, Object> response = doAPICall(APICALL_GETMEETINGS, query.toString());
 
             // nullify password fields
-            for (String key : response.keySet()) {
-                if ("attendeePW".equals(key) || "moderatorPW".equals(key))
-                    response.put(key, null);
+            // 1.Variante
+
+            Map<String, Object>  map = null;
+            for(String key1 : response.keySet()){ // map
+                if("meetings".equals(key1)){
+                    Object meetings = response.get("meetings");
+                    if(meetings != ""){
+                        List list =(List) meetings;
+                        for(int i = 0; i < list.size(); i++ ){
+                            map = (Map) list.get(i);
+                            for(String key : map.keySet()) {
+                                if ("attendeePW".equals(key) || "moderatorPW".equals(key)){
+                                    map.put(key, null);
+                                }
+                            }
+                        }
+                    }
+                }
             }
+
+
+            // 2. variante
+            /*
+            Map<String, Object> map = null;
+            Object meetings = response.get("meetings");
+            if(meetings != ""){
+               List list =(List) meetings;
+                if(list != null){
+                    for(int i = 0; i < list.size(); i++ ){
+                        map = (Map) list.get(i);
+                        if(map.get("attendeePW") != null){
+                            map.put("attendeePW", null);
+                        }
+                        if(map.get("moderatorPW") != null){
+                            map.put("moderatorPW", null);
+                        }
+                    }
+                }
+            }
+            */
 
             return response;
         } catch (Exception e) {
