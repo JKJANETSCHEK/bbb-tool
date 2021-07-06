@@ -81,6 +81,7 @@ import org.sakaiproject.id.api.IdManager;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
+import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
@@ -707,12 +708,90 @@ public class BBBMeetingEntityProvider extends AbstractEntityProvider implements
         if (logger.isDebugEnabled())
             logger.debug("getMeetings");
 
+
+        // JJ check if user is logged in
+        Session session = null;
+        try{
+            session = (Session) params.get("sakai.session");
+        }catch(ClassCastException | NullPointerException e){
+            logger.error(e.getMessage(), e);
+        }
+        if(session.getUserEid() == null){
+            return new ActionReturn(new HashMap<String, String>());
+        }
+
         try {
-            return new ActionReturn(meetingManager.getMeetings());
+            //return new ActionReturn(meetingManager.getMeetings());
+            Map<String, Object> response = meetingManager.getMeetings();
+            checkPermissionsMeetings(response);
+            return new ActionReturn(response);
         } catch (BBBException e) {
             return new ActionReturn(new HashMap<String, String>());
         }
     }
+
+
+
+    private void checkPermissionsMeetings( Map<String, Object> response)  {
+        //1.variante
+        /*
+        try{
+            Object meetings = response.get("meetings");
+            if(meetings != "" && response.get("returncode").equals("SUCCESS")){
+                List list =(List) meetings;
+                List listTmp =  new ArrayList<>(list);
+                for(int i = 0; i < listTmp.size(); i++ ){
+                    Map<String, Object>  map = (Map) listTmp.get(i);
+                    Map<String, Object>  metadata = (Map<String, Object>) map.get("metadata");
+                    String contextId = (String) metadata.get("contextid");
+                    Boolean isMember = siteService.isCurrentUserMemberOfSite(contextId);
+                    if(isMember == false){
+                        list.remove(map);
+                    }
+                }
+            }
+        }catch(ClassCastException | NullPointerException | IndexOutOfBoundsException e){
+            logger.error(e.getMessage(), e);
+        }
+        */
+
+        // 2.Variante
+        try{
+            Object meetings = response.get("meetings");
+            if(meetings != "" && response.get("returncode").equals("SUCCESS")){
+                List list =(List) meetings;
+                List listTmp =  new ArrayList<>(list);
+                for(int i = 0; i < listTmp.size(); i++ ) {
+                    Map<String, Object> map = (Map) listTmp.get(i);
+                    Map<String, Object> metadata = (Map<String, Object>) map.get("metadata");
+                    // String contextId = (String) metadata.get("contextid");
+                    // Boolean x = isUserAllowedInLocation(userDirectoryService.getCurrentUser().getId(), "bbb.participate", contextId);
+                    String meetingID = (String) map.get("meetingID");
+                    BBBMeeting bbbMeeting =  meetingManager.getMeeting(meetingID);
+                    if(bbbMeeting == null){
+                        list.remove(map);
+                    }
+                }
+            }
+        }catch(ClassCastException | NullPointerException | IndexOutOfBoundsException  e){
+            logger.error(e.getMessage(), e);
+        } catch (SecurityException e) {
+            logger.error(e.getMessage(), e);
+        }catch (Exception e){
+            logger.error(e.getMessage(), e);
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
 
     @EntityCustomAction(viewKey = EntityView.VIEW_SHOW)
     public ActionReturn getMeetingInfo(OutputStream out, EntityView view, EntityReference ref, Map<String, Object> params) {
